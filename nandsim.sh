@@ -1,6 +1,6 @@
 #!/bin/bash
 
-LUBI_PRG=./main
+LUBI_PRG=lubi
 
 modprobe nandsim parts="32" bbt=1
 modprobe gluebi
