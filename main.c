@@ -23,6 +23,7 @@
 #include <libgen.h>
 
 #include "liblubi.h"
+#include "config.h"
 
 #define handle_error(str) \
 	do { err(-1, "%d: %s", __LINE__, str); return -1; } while (0)
@@ -50,6 +51,11 @@ static void usage(char *prg)
 	       prg);
 }
 
+static void version(char *prg)
+{
+	printf("%s - " PACKAGE_VERSION "\n", prg);
+}
+
 int main(int argc, char *argv[])
 {
 	struct data data;
@@ -74,6 +80,7 @@ int main(int argc, char *argv[])
 			{"peb_nb",     required_argument, 0, 4},
 			{"peb_sz",     required_argument, 0, 5},
 			{"vol",        required_argument, 0, 6},
+			{"version",    no_argument,       0, 7},
 			{0, 0, 0, 0},
 		};
 		int opt_idx = 0;
@@ -103,6 +110,9 @@ int main(int argc, char *argv[])
 		case  6:
 			arg_volname = optarg;
 			break;
+		case  7:
+			version(prg);
+			exit(0);
 		}
 	}
 
