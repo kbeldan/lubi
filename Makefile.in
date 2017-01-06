@@ -2,6 +2,7 @@ prefix = @prefix@
 bindir = @bindir@
 
 ENABLE_DEBUG = @enable_debug@
+ENABLE_TESTS = @enable_tests@
 
 EXT = crc32
 VPATH = $(EXT)
@@ -21,6 +22,11 @@ LDFLAGS += @LDFLAGS@
 
 EXE = lubi
 OBJS = main.o crc32.o liblubi.o
+PROGRAMS = $(EXE)
+
+ifeq ($(ENABLE_TESTS),yes)
+PROGRAMS += nandsim.sh
+endif
 
 all: $(EXE)
 
@@ -34,6 +40,6 @@ clean:
 
 install: all
 	install -d $(DESTDIR)$(bindir)
-	install -m 0755 $(EXE) $(DESTDIR)$(bindir)
+	install -m 0755 $(PROGRAMS) $(DESTDIR)$(bindir)
 
 .PHONY: all clean install

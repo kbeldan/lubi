@@ -6,6 +6,7 @@ sbindir='${prefix}/sbin'
 sysconfdir='${prefix}/etc'
 
 enable_debug=no
+enable_tests=no
 
 usage() {
     cat <<EOF
@@ -27,6 +28,7 @@ Fine tuning of the installation directories:
 
 Optional Features:
   --enable-debug           enable extra debugging [${enable_debug}]
+  --enable-tests           enable test programs [${enable_tests}]
 EOF
 }
 
@@ -38,6 +40,7 @@ for arg; do
         --sbindir=*) sbindir=${arg#*=} ;;
         --sysconfdir=*) sysconfdir=${arg#*=} ;;
         --enable-debug=*) enable_debug=${arg#*=} ;;
+        --enable-tests=*) enable_tests=${arg#*=} ;;
         -* ) echo "$0: unknown option $arg" ;;
         *=*) ;;
     esac
@@ -57,6 +60,7 @@ sed -e "s;@prefix@;${prefix};g" \
     -e "s;@sbindir@;${sbindir};g" \
     -e "s;@sysconfdir@;${sysconfdir};g" \
     -e "s;@enable_debug@;${enable_debug};g" \
+    -e "s;@enable_tests@;${enable_tests};g" \
     -e "s;@CFLAGS@;${CFLAGS};g" \
     -e "s;@CPPFLAGS@;${CPPFLAGS};g" \
     -e "s;@LDFLAGS@;${LDFLAGS};g" \
