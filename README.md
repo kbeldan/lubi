@@ -37,6 +37,8 @@ Usage: main     --ifile in\_file
 
 $ nanddump --bb=dumpbad /dev/mtd1 -f mtd1.dat  
 $ ./main --ifile mtd1.dat --peb_sz $((128 << 10)) --vol vol_0 --ofile vol_0.dat  
+
+See also nandsim.sh.
 ```
 ### Code snippet
 
