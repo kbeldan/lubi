@@ -1,0 +1,63 @@
+#!/bin/sh
+
+prefix=/usr/local
+bindir='${prefix}/bin'
+sbindir='${prefix}/sbin'
+sysconfdir='${prefix}/etc'
+
+enable_debug=no
+
+usage() {
+    cat <<EOF
+Usage: ./configure [OPTION]...
+
+Defaults for the options are specified in brackets.
+
+Configuration:
+  -h, --help              display this help and exit
+
+Installation directories:
+  --prefix=PREFIX         install architecture-independent files in PREFIX
+                          [${prefix}]
+
+Fine tuning of the installation directories:
+  --bindir=DIR             user executables [PREFIX/bin]
+  --sbindir=DIR            system admin executables [PREFIX/sbin]
+  --sysconfdir=DIR         read-only single-machine data [PREFIX/etc]
+
+Optional Features:
+  --enable-debug           enable extra debugging [${enable_debug}]
+EOF
+}
+
+for arg; do
+    case "$arg" in
+        --help) usage ;;
+        --prefix=*) prefix=${arg#*=} ;;
+        --bindir=*) bindir=${arg#*=} ;;
+        --sbindir=*) sbindir=${arg#*=} ;;
+        --sysconfdir=*) sysconfdir=${arg#*=} ;;
+        --enable-debug=*) enable_debug=${arg#*=} ;;
+        -* ) echo "$0: unknown option $arg" ;;
+        *=*) ;;
+    esac
+done
+
+cat <<EOF >config.h
+/*
+ * Generated file. DO NOT EDIT!
+ */
+
+#define PACKAGE_NAME       "lubi"
+#define PACKAGE_VERSION    "$(cat VERSION)"
+EOF
+
+sed -e "s;@prefix@;${prefix};g" \
+    -e "s;@bindir@;${bindir};g" \
+    -e "s;@sbindir@;${sbindir};g" \
+    -e "s;@sysconfdir@;${sysconfdir};g" \
+    -e "s;@enable_debug@;${enable_debug};g" \
+    -e "s;@CFLAGS@;${CFLAGS};g" \
+    -e "s;@CPPFLAGS@;${CPPFLAGS};g" \
+    -e "s;@LDFLAGS@;${LDFLAGS};g" \
+    Makefile.in > Makefile

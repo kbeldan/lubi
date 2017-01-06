@@ -1,0 +1,39 @@
+prefix = @prefix@
+bindir = @bindir@
+
+ENABLE_DEBUG = @enable_debug@
+
+EXT = crc32
+VPATH = $(EXT)
+
+CFLAGS += $(patsubst %,-I%,$(VPATH)) -std=c99
+CFLAGS += -Wextra -Wall -Werror -g -Os
+CFLAGS += @CFLAGS@
+
+ifeq ($(ENABLE_DEBUG),yes)
+CPPFLAGS += -DCFG_LUBI_DBG
+endif
+
+CPPFLAGS += -DCFG_LUBI_INT_CRC32
+CPPFLAGS += @CPPFLAGS@
+
+LDFLAGS += @LDFLAGS@
+
+EXE = lubi
+OBJS = main.o crc32.o liblubi.o
+
+all: $(EXE)
+
+$(OBJS): config.h
+
+$(EXE): $(OBJS)
+	$(CC) $(LDFLAGS) $^ -o $@
+
+clean:
+	rm -f $(OBJS) $(EXE)
+
+install: all
+	install -d $(DESTDIR)$(bindir)
+	install -m 0755 $(EXE) $(DESTDIR)$(bindir)
+
+.PHONY: all clean install
