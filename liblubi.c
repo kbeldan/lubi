@@ -378,11 +378,11 @@ int lubi_init(void *priv, const struct lubi_args *args)
 	lubi->peb_nb = args->peb_nb;
 
 	if (lubi->peb_nb > CFG_LUBI_PEB_NB_MAX) {
-		DBG("peb_nb arg = %d > %d", lubi->peb_nb, CFG_LUBI_PEB_NB_MAX);
+		DBG("peb_nb arg = %d > %d\n", lubi->peb_nb, CFG_LUBI_PEB_NB_MAX);
 		return -1;
 	}
 	if (lubi->peb_sz > CFG_LUBI_PEB_SZ_MAX) {
-		DBG("peb_nb arg = %d > %d", lubi->peb_sz, CFG_LUBI_PEB_SZ_MAX);
+		DBG("peb_nb arg = %d > %d\n", lubi->peb_sz, CFG_LUBI_PEB_SZ_MAX);
 		return -1;
 	}
 
