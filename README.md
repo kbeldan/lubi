@@ -1,13 +1,14 @@
 # LUBI - Lightweight UBI library
 
-This is a simple library that can read UBI (Unsorted Block Images) static volumes.
-It can be used in early stages of a bootloader as well as tested as-is on a workstation
-with a flash dump input (see example below).
+This is a simple library that can read UBI (Unsorted Block Images) static volumes.  
+It can be used in early stages of a bootloader as well as tested as-is on a workstation  
+with a flash dump input (see example below).  
 
-It doesn't use malloc or trees but
-- memset / memmove / strcmp
-- htobe{16,32}
-- crc32
+It doesn't use malloc or trees but:
+
+* memset / memmove / strcmp
+* htobe{16,32}
+* crc32
 
 ## Compile Flags
 
@@ -20,8 +21,7 @@ CFG_LUBI_DBG         - Enable stdio debugging
 CFG_LUBI_INT_CRC32   - Use the internal crc32 func
 ```
 
-(\*) These flags allow for some code simplification but said hard limits could be handled
-otherwise.
+(\*) These flags allow for some code simplification but said hard limits could be handled otherwise.
 
 ## Usage example
 ### Example program
@@ -42,8 +42,8 @@ See also nandsim.sh.
 ```
 ### Code snippet
 
-Parametering for a flash with 128KB blocks and a UBI partition starting at block 1 and ending
-at block 64 incl., i.e. for mtd addresses running from start=0x20000 to end=0x820000.
+Parametering for a flash with 128KB blocks and a UBI partition starting at block 1 and ending  
+at block 64 incl., i.e. for mtd addresses running from start=0x20000 to end=0x820000.  
 
 ```
 struct ubi_args ubi_args;
