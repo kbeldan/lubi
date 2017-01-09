@@ -1,8 +1,9 @@
 # LUBI - Lightweight UBI library
 
 This is a simple library that can read UBI (Unsorted Block Images) static volumes.  
-It can be used in early stages of a bootloader as well as tested as-is on a workstation  
-with a flash dump input (see example below).  
+It can be used in early stages of a bootloader as well as tested as-is on a workstation with a  
+flash dump input (see example below). For integrity, it uses solely the CRCs computed by UBI  
+and does not try to rely on the values returned by flash\_read callback.  
 
 It doesn't use malloc or trees but:
 
