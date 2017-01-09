@@ -254,11 +254,10 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 	}
 
 	DBG(SGR_BRST "%s: Volume \"%s\"\n\tEBs used / ok: %d / %d\n\tread %d bytes\n",
-	    __func__, vol_id == UBI_LAYOUT_VOLUME_ID ? NULL :
-	    lubi->vtbl_recs[vol_id].name, used_ebs, lebs_ok, ret_len);
+	    __func__, is_lvl ? NULL : lubi->vtbl_recs[vol_id].name, used_ebs,
+	    lebs_ok, ret_len);
 
-	if ((used_ebs != lebs_ok) &&
-	    ((vol_id != UBI_LAYOUT_VOLUME_ID) || (lebs_ok < 1))) {
+	if ((used_ebs != lebs_ok) && (!is_lvl || lebs_ok < 1)) {
 		DBG(SGR_BRED "%s: Volume read failure (read %d bytes)\n",
 		    __func__, ret_len);
 		return -1;
