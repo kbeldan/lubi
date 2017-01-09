@@ -370,7 +370,8 @@ int lubi_mem_sz(void)
 /**
  *
  */
-int lubi_init(void *priv, const struct lubi_args *args)
+int lubi_init(void *priv, void *ext_priv, flash_read_fn_t flash_read,
+	      int peb_sz, int peb_min, int peb_nb)
 {
 	struct lubi_priv *lubi = priv;
 
@@ -378,11 +379,11 @@ int lubi_init(void *priv, const struct lubi_args *args)
 
 	memset(lubi, 0, sizeof(struct lubi_priv));
 
-	lubi->ext_priv = args->priv;
-	lubi->ext_flash_read = args->flash_read;
-	lubi->peb_sz = args->peb_sz;
-	lubi->peb_min = args->peb_min;
-	lubi->peb_nb = args->peb_nb;
+	lubi->ext_priv = ext_priv;
+	lubi->ext_flash_read = flash_read;
+	lubi->peb_sz = peb_sz;
+	lubi->peb_min = peb_min;
+	lubi->peb_nb = peb_nb;
 
 	if (lubi->peb_nb > CFG_LUBI_PEB_NB_MAX) {
 		DBG("peb_nb arg = %d > %d\n", lubi->peb_nb, CFG_LUBI_PEB_NB_MAX);

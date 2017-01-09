@@ -60,7 +60,6 @@ int main(int argc, char *argv[])
 {
 	struct data data;
 	void *lubi_priv;
-	struct lubi_args lubi_args;
 	int i_fd, o_fd = 0, len;
 	struct stat stat;
 
@@ -140,13 +139,8 @@ int main(int argc, char *argv[])
 
 	data.peb_sz = arg_peb_sz;
 
-	lubi_args.priv = &data;
-	lubi_args.flash_read = flash_read;
-	lubi_args.peb_sz = data.peb_sz;
-	lubi_args.peb_min = arg_peb_min;
-	lubi_args.peb_nb = arg_peb_nb ?: stat.st_size / lubi_args.peb_sz;
-
-	if (lubi_init(lubi_priv, &lubi_args)) {
+	if (lubi_init(lubi_priv, &data, flash_read, data.peb_sz, arg_peb_min,
+		      arg_peb_nb ?: stat.st_size / data.peb_sz)) {
 		printf("%s:%d: lubi_init failed\n", __func__, __LINE__);
 		exit(-1);
 	}
