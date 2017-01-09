@@ -176,13 +176,16 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 	struct leb2peb *leb2pebs = lubi->scratch_leb2pebs;
 	int usable_leb_sz;
 	int ret_len = 0, lebs_ok = 0, used_ebs = 0;
+	int is_lvl, data_ok;
 
 	DBG_FUNC_ENTRY();
 
-	if (vol_id == UBI_LAYOUT_VOLUME_ID)
+	is_lvl = vol_id == UBI_LAYOUT_VOLUME_ID;
+
+	if (is_lvl)
 		usable_leb_sz = lubi->leb_sz;
-	else if (!lubi->vtbl_recs || lubi->vtbl_recs[vol_id].vol_type !=
-					UBI_VID_STATIC)
+	else if (!lubi->vtbl_recs ||
+		  lubi->vtbl_recs[vol_id].vol_type != UBI_VID_STATIC)
 			return -1;
 	else
 		usable_leb_sz = lubi->leb_sz -
@@ -214,9 +217,8 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 		// Linux-UBI handles its data_{crc,size} when restoring it
 		//
 		// - Linux-UBI uses the LEB size to compute vtbl_slots
-		len = vol_id == UBI_LAYOUT_VOLUME_ID ?
-					lubi->vtbl_slots * UBI_VTBL_RECORD_SIZE :
-					be32toh(vhdr->data_size);
+		len = is_lvl ? lubi->vtbl_slots * UBI_VTBL_RECORD_SIZE :
+			       be32toh(vhdr->data_size);
 		if (!l2p->valid) {
 			rd_dst = buf_dst;
 		} else {
@@ -233,9 +235,12 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 
 		flash_read(lubi, rd_dst, i, lubi->data_offs, len);
 
-		if ((crc32(rd_dst, len) == be32toh(vhdr->data_crc)) ||
-		    (vol_id == UBI_LAYOUT_VOLUME_ID &&
-		     !check_vtbl(lubi, rd_dst))) {
+		if (is_lvl)
+			data_ok = !check_vtbl(lubi, rd_dst);
+		else
+			data_ok = crc32(rd_dst, len) == be32toh(vhdr->data_crc);
+
+		if (data_ok) {
 			l2p->peb = i;
 			if (!l2p->valid) {
 				l2p->valid = 1;
