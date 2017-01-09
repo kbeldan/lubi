@@ -36,18 +36,25 @@ struct lubi_priv {
 	int peb_nb;
 	int peb_min;
 
+	// Zeroed by scan {
 	// scan dyn params
+	char scan_mem_start[0];
 	uint32_t leb_sz;
 	uint32_t vhdr_offs;
 	uint32_t data_offs;
 
-	struct peb_rec pebs[CFG_LUBI_PEB_NB_MAX];
-	struct leb2peb scratch_leb2pebs[CFG_LUBI_PEB_NB_MAX];
-	uint8_t scratch_leb[CFG_LUBI_PEB_SZ_MAX];
-
 	uint8_t vtbls_buf[2 * CFG_LUBI_PEB_SZ_MAX];
 	struct ubi_vtbl_record *vtbl_recs;
 	int vtbl_slots;
+
+	struct peb_rec pebs[CFG_LUBI_PEB_NB_MAX];
+	char scan_mem_end[0];
+	// }
+
+	// scratch mem
+	struct leb2peb scratch_leb2pebs[CFG_LUBI_PEB_NB_MAX];
+	uint8_t scratch_leb[CFG_LUBI_PEB_SZ_MAX];
+
 };
 
 enum {
@@ -85,6 +92,10 @@ static int lubi_scan(struct lubi_priv *lubi)
 	int dynparams_set = 0;
 
 	DBG_FUNC_ENTRY();
+
+	memset(lubi->scan_mem_start, 0,
+	       __builtin_offsetof(struct lubi_priv, scan_mem_end) -
+	       __builtin_offsetof(struct lubi_priv , scan_mem_start));
 
 	for (int i = lubi->peb_min; i < lubi->peb_min + lubi->peb_nb; i++) {
 		struct peb_rec *peb = &lubi->pebs[i];
@@ -375,8 +386,6 @@ int lubi_init(void *priv, void *ext_priv, flash_read_fn_t flash_read,
 	struct lubi_priv *lubi = priv;
 
 	DBG_FUNC_ENTRY();
-
-	memset(lubi, 0, sizeof(struct lubi_priv));
 
 	lubi->ext_priv = ext_priv;
 	lubi->ext_flash_read = flash_read;
