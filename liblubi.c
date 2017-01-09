@@ -31,8 +31,7 @@ struct leb2peb {
 struct lubi_priv {
 	// user args
 	void *ext_priv;
-	int (*ext_flash_read)(void *priv, void *dst, int pnum, int offset,
-			      int len);
+	flash_read_fn_t ext_flash_read;
 	int peb_sz;
 	int peb_nb;
 	int peb_min;
