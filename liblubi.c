@@ -198,8 +198,8 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 
 	for (int i = lubi->peb_min; i < lubi->peb_min + lubi->peb_nb; i++) {
 		struct peb_rec *peb = &lubi->pebs[i];
-		struct ubi_vid_hdr *vhdr = &peb->vhdr;
-		uint32_t lnum, len;
+		struct ubi_vid_hdr *prev_vhdr, *vhdr = &peb->vhdr;
+		uint32_t lnum, len, prev_len;
 		struct leb2peb *l2p;
 		void *buf_dst, *rd_dst;
 
@@ -222,8 +222,7 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 		if (!l2p->valid) {
 			rd_dst = buf_dst;
 		} else {
-			struct ubi_vid_hdr *prev_vhdr =
-				&lubi->pebs[l2p->peb].vhdr;
+			prev_vhdr = &lubi->pebs[l2p->peb].vhdr;
 
 			if (be64toh(vhdr->sqnum) < be64toh(prev_vhdr->sqnum))
 				continue;
@@ -246,10 +245,14 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 				l2p->valid = 1;
 				if (!lebs_ok++)
 					used_ebs = be32toh(vhdr->used_ebs);
-				ret_len += len;
 			} else {
+				prev_len = is_lvl ?
+					   len : be32toh(prev_vhdr->data_size);
+
 				memmove(buf_dst, rd_dst, len);
+				ret_len -= prev_len;
 			}
+			ret_len += len;
 		}
 	}
 
