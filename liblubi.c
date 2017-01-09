@@ -227,6 +227,10 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 		// Linux-UBI handles its data_{crc,size} when restoring it
 		//
 		// - Linux-UBI uses the LEB size to compute vtbl_slots
+		//
+		// To improve any diagnostic and ease ret_len computation we
+		// could check that in case of data and unless we are parsing
+		// the latest LEB, data_size is usable_leb_sz
 		len = is_lvl ? lubi->vtbl_slots * UBI_VTBL_RECORD_SIZE :
 			       be32toh(vhdr->data_size);
 		if (!l2p->valid) {
