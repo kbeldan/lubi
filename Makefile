@@ -1,30 +1,22 @@
-prefix = @prefix@
-bindir = @bindir@
-
-ENABLE_DEBUG = @enable_debug@
-ENABLE_TESTS = @enable_tests@
+-include config.mk
 
 EXT = crc32
 VPATH = $(EXT)
 
 CFLAGS += $(patsubst %,-I%,$(VPATH)) -std=c99
 CFLAGS += -Wextra -Wall -Werror -g -Os
-CFLAGS += @CFLAGS@
 
-ifeq ($(ENABLE_DEBUG),yes)
+ifdef ENABLE_DEBUG
 CPPFLAGS += -DCFG_LUBI_DBG
 endif
 
 CPPFLAGS += -DCFG_LUBI_INT_CRC32
-CPPFLAGS += @CPPFLAGS@
-
-LDFLAGS += @LDFLAGS@
 
 EXE = lubi
 OBJS = main.o crc32.o liblubi.o
 PROGRAMS = $(EXE)
 
-ifeq ($(ENABLE_TESTS),yes)
+ifdef ENABLE_TESTS
 PROGRAMS += nandsim.sh
 endif
 
@@ -39,7 +31,7 @@ clean:
 	rm -f $(OBJS) $(EXE)
 
 install: all
-	install -d $(DESTDIR)$(bindir)
-	install -m 0755 $(PROGRAMS) $(DESTDIR)$(bindir)
+	install -d $(DESTDIR)$(BINDIR)
+	install -m 0755 $(PROGRAMS) $(DESTDIR)$(BINDIR)
 
 .PHONY: all clean install
