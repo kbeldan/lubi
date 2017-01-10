@@ -1,13 +1,5 @@
 #!/bin/sh
 
-prefix=/usr/local
-bindir='${prefix}/bin'
-sbindir='${prefix}/sbin'
-sysconfdir='${prefix}/etc'
-
-enable_debug=no
-enable_tests=no
-
 usage() {
     cat <<EOF
 Usage: ./configure [OPTION]...
@@ -19,32 +11,94 @@ Configuration:
 
 Installation directories:
   --prefix=PREFIX         install architecture-independent files in PREFIX
-                          [${prefix}]
+                          [/usr/local]
+  --exec-prefix=EPREFIX   install architecture-dependent files in EPREFIX
+                          [PREFIX]
 
 Fine tuning of the installation directories:
-  --bindir=DIR             user executables [PREFIX/bin]
-  --sbindir=DIR            system admin executables [PREFIX/sbin]
-  --sysconfdir=DIR         read-only single-machine data [PREFIX/etc]
+  --bindir=DIR            user executables [PREFIX/bin]
+  --sbindir=DIR           system admin executables [PREFIX/sbin]
+  --libexecdir=DIR        program executables [EPREFIX/libexec]
+  --sysconfdir=DIR        read-only single-machine data [PREFIX/etc]
+  --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+  --datadir=DIR           read-only arch.-independent data root [PREFIX/share]
 
 Optional Features:
-  --enable-debug           enable extra debugging [${enable_debug}]
-  --enable-tests           enable test programs [${enable_tests}]
+  --enable-debug          enable extra debugging [no]
+  --enable-tests          enable test programs [no]
+
+System types:
+  --build=BUILD           configure for building on BUILD [guessed]
+  --host=HOST             cross-compile to build programs to run on HOST [BUILD]
 EOF
 }
 
-for arg; do
-    case "$arg" in
+for opt; do
+    optarg=$(expr "$opt" : '[^=]*=\(.*\)')
+    case "$opt" in
         --help) usage ;;
-        --prefix=*) prefix=${arg#*=} ;;
-        --bindir=*) bindir=${arg#*=} ;;
-        --sbindir=*) sbindir=${arg#*=} ;;
-        --sysconfdir=*) sysconfdir=${arg#*=} ;;
-        --enable-debug=*) enable_debug=${arg#*=} ;;
-        --enable-tests=*) enable_tests=${arg#*=} ;;
-        -* ) echo "$0: unknown option $arg" ;;
-        *=*) ;;
+        --prefix=*) prefix=$optarg;;
+        --exec-prefix=*) eprefix=$optarg;;
+        --bindir=*) bindir=$optarg;;
+        --sbindir=*) sbindir=$optarg;;
+        --libexec=*) libexec=$optarg;;
+        --sysconfdir=*) sysconfdir=$optarg;;
+        --localstatedir=*) localstatedir=$optarg;;
+        --datadir=*) datadir=$optarg;;
+        --build=*) build=$optarg;;
+        --host=*) host=$optarg;;
+        --target=*) target=$optarg;;
+        --enable-debug) enable_debug=yes;;
+        --enable-tests) enable_tests=yes;;
+        -* ) echo "$0: unknown option $arg";;
     esac
 done
+
+: ${prefix:=/usr/local}
+: ${eprefix:=${prefix}}
+: ${bindir:=${prefix}/bin}
+: ${sbindir:=${prefix}/sbin}
+: ${libexecdir:=${eprefix}/libexec}
+: ${sysconfdir:=${prefix}/etc}
+: ${localstatedir:=${prefix}/var}
+: ${datadir:=${prefix}/share}
+
+if [ -z "${build}" ]; then
+    build=$(uname -m)-unknown-$(uname -s | tr '[:upper:]' '[:lower:]')
+fi
+
+if [ -z "${host}" ]; then
+    [ -z "${target}" ] && target=${build}
+    host=${target}
+fi
+
+if [ -z "${target}" ]; then
+    [ -z "${host}" ] && host=${build}
+    target=${host}
+fi
+
+if [ -z "$CC" ]; then
+    printf "Looking for compiler ... "
+    for b in ${target}- ""; do
+        for cc in gcc pcc icc cc lang; do
+            if type $b$cc > /dev/null 2>&1; then
+                CC=$b$cc
+                echo "$CC"
+                break
+            fi
+        done
+        [ -n "$CC" ] && break
+    done
+    if [ -z "$CC" ]; then
+        echo
+        echo "no suitable compiler found" >&2
+        exit 1
+    fi
+else
+    echo "using compiler $CC"
+fi
+
+version=$(cat VERSION)
 
 cat <<EOF >config.h
 /*
@@ -52,16 +106,31 @@ cat <<EOF >config.h
  */
 
 #define PACKAGE_NAME       "lubi"
-#define PACKAGE_VERSION    "$(cat VERSION)"
+#define PACKAGE_VERSION    "${version}"
 EOF
 
-sed -e "s;@prefix@;${prefix};g" \
-    -e "s;@bindir@;${bindir};g" \
-    -e "s;@sbindir@;${sbindir};g" \
-    -e "s;@sysconfdir@;${sysconfdir};g" \
-    -e "s;@enable_debug@;${enable_debug};g" \
-    -e "s;@enable_tests@;${enable_tests};g" \
-    -e "s;@CFLAGS@;${CFLAGS};g" \
-    -e "s;@CPPFLAGS@;${CPPFLAGS};g" \
-    -e "s;@LDFLAGS@;${LDFLAGS};g" \
-    Makefile.in > Makefile
+cat <<EOF >config.mk
+#
+# Generated file. DO NOT EDIT!
+#
+
+VERSION = ${version}
+
+PREFIX ?= ${prefix}
+EPREFIX ?= ${eprefix}
+BINDIR ?= ${bindir}
+SBINDIR ?= ${sbindir}
+LIBEXECDIR ?= ${libexecdir}
+SYSCONFDIR ?= ${sysconfdir}
+LOCALSTATEDIR ?= ${localstatedir}
+DATADIR ?= ${datadir}
+
+ENABLE_DEBUG ?= ${enable_debug}
+ENABLE_TESTS ?= ${enable_tests}
+
+CFLAGS += ${CFLAGS}
+CPPFLAGS += ${CPPFLAGS}
+LDFLAGS += ${LDFLAGS}
+
+CC = ${CC}
+EOF
