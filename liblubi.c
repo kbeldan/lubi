@@ -249,15 +249,31 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 		}
 	}
 
-
 	DBG(SGR_BRST "%s: Volume \"%s\"\n\tEBs used / ok: %d / %d\n\tread %d bytes\n",
 	    __func__, is_lvl ? NULL : lubi->vtbl_recs[vol_id].name, used_ebs,
 	    lebs_ok, ret_len);
 
-	if ((used_ebs != lebs_ok) && (!is_lvl || lebs_ok < 1)) {
-		DBG(SGR_BRED "%s: Volume read failure (read %d bytes)\n",
-		    __func__, ret_len);
-		return -1;
+	if (ret_len && lebs_ok == used_ebs) {
+		int expected;
+		int last_peb = leb2pebs[used_ebs - 1].peb;
+
+		if (lebs_ok)
+			expected = usable_leb_sz * (used_ebs - 1) +
+				   be32toh(lubi->pebs[last_peb].vhdr.data_size);
+		else
+			expected = 0;
+		if (expected != ret_len) {
+			DBG(SGR_BRED "%s: Expected %d bytes - read %d\n",
+			    __func__, expected, ret_len);
+			return -1;
+		}
+	} else {
+		// Do not return an error in case we could get 1 LEB from the LVL
+		if (!is_lvl || lebs_ok < 1) {
+			DBG(SGR_BRED "%s: Volume read failure (read %d bytes)\n",
+			    __func__, ret_len);
+			return -1;
+		}
 	}
 
 	return ret_len;
