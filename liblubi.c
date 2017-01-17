@@ -24,7 +24,7 @@ struct peb_rec {
 };
 
 struct leb2peb {
-	uint8_t valid;
+	uint8_t dcrc_ok;
 	uint8_t unused;
 	uint16_t peb;
 };
@@ -164,7 +164,7 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 	struct leb2peb *leb2pebs = lubi->scratch_leb2pebs;
 	int usable_leb_sz;
 	int ret_len = 0, lebs_ok = 0, used_ebs = 0;
-	int is_lvl, data_ok;
+	int is_lvl, dcrc_ok;
 
 	DBG_FUNC_ENTRY();
 
@@ -211,7 +211,7 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 		// the latest LEB, data_size is usable_leb_sz
 		len = is_lvl ? lubi->vtbl_slots * UBI_VTBL_RECORD_SIZE :
 			       be32toh(vhdr->data_size);
-		if (!l2p->valid) {
+		if (!l2p->dcrc_ok) {
 			rd_dst = buf_dst;
 		} else {
 			prev_vhdr = &lubi->pebs[l2p->peb].vhdr;
@@ -227,14 +227,14 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 		flash_read(lubi, rd_dst, i, lubi->data_offs, len);
 
 		if (is_lvl)
-			data_ok = !check_vtbl(lubi, rd_dst);
+			dcrc_ok = !check_vtbl(lubi, rd_dst);
 		else
-			data_ok = crc32(rd_dst, len) == be32toh(vhdr->data_crc);
+			dcrc_ok = crc32(rd_dst, len) == be32toh(vhdr->data_crc);
 
-		if (data_ok) {
+		if (dcrc_ok) {
 			l2p->peb = i;
-			if (!l2p->valid) {
-				l2p->valid = 1;
+			if (!l2p->dcrc_ok) {
+				l2p->dcrc_ok = 1;
 				if (!lebs_ok++)
 					used_ebs = be32toh(vhdr->used_ebs);
 			} else {
@@ -355,12 +355,12 @@ int lubi_attach(void *priv, uint32_t vhdr_offs, uint32_t data_offs)
 		return -1;
 
 	for (int i = 0; i < 2; i++)
-		DBG("LVL: LEB[%1d] -> PEB[%3d] - valid: %s\n",
-		    i, leb2pebs[i].peb, leb2pebs[i].valid ? "yes" : "no");
+		DBG("LVL: LEB[%1d] -> PEB[%3d] - data crc: %s\n",
+		    i, leb2pebs[i].peb, leb2pebs[i].dcrc_ok ? "good" : "bad");
 
-	if (leb2pebs[0].valid)
+	if (leb2pebs[0].dcrc_ok)
 		lubi->vtbl_recs = (void *)&lubi->vtbls_buf[0];
-	else if (leb2pebs[1].valid)
+	else if (leb2pebs[1].dcrc_ok)
 		lubi->vtbl_recs = (void *)&lubi->vtbls_buf[lubi->leb_sz];
 	else
 		return -1;
