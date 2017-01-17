@@ -25,7 +25,7 @@
 #define SGR_LBLU		"\033[34m"
 #define SGR_RST 		"\033[0m"
 #define DBG(str, ...)		do {				\
-		fprintf(stdout, str SGR_RST, ## __VA_ARGS__);	\
+		fprintf(stderr, str SGR_RST, ## __VA_ARGS__);	\
 	} while (0)
 #else
 #define DBG(...)		do {} while (0)
