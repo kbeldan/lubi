@@ -42,13 +42,14 @@ static int flash_read(void *priv, void *dst, int pnum, int offset, int len)
 
 static void usage(char *prg)
 {
-	printf("Usage: %s\t--ifile in_file\n"
-	       "\t\t[--ofile out_file]\n"
-	       "\t\t[--peb_min peb_min]\n"
-	       "\t\t[--peb_nb peb_nb]\n"
-	       "\t\t--peb_sz peb_sz\n"
-	       "\t\t[--vol volume_name]\n",
-	       prg);
+	fprintf(stderr, "Usage: %s\n"
+		"\t\t--ifile in_file\n"
+		"\t\t[--ofile out_file]\n"
+		"\t\t[--peb_min peb_min]\n"
+		"\t\t[--peb_nb peb_nb]\n"
+		"\t\t--peb_sz peb_sz\n"
+		"\t\t[--vol volume_name]\n",
+		prg);
 }
 
 static void version(char *prg)
@@ -141,15 +142,15 @@ int main(int argc, char *argv[])
 
 	if (lubi_init(lubi_priv, &data, flash_read, data.peb_sz, arg_peb_min,
 		      arg_peb_nb ?: stat.st_size / data.peb_sz)) {
-		printf("%s:%d: lubi_init failed\n", __func__, __LINE__);
+		fprintf(stderr, "%s:%d: lubi_init failed\n", __func__, __LINE__);
 		exit(-1);
 	}
 	if (lubi_attach(lubi_priv, 0, 0)) {
-		printf("%s:%d: lubi_attach failed\n", __func__, __LINE__);
+		fprintf(stderr, "%s:%d: lubi_attach failed\n", __func__, __LINE__);
 		exit(-1);
 	}
 	if (lubi_list_vols(lubi_priv)) {
-		printf("%s:%d: lubi_list_vols failed\n", __func__, __LINE__);
+		fprintf(stderr, "%s:%d: lubi_list_vols failed\n", __func__, __LINE__);
 		exit(-1);
 	}
 
@@ -157,18 +158,18 @@ int main(int argc, char *argv[])
 		return 0;
 
 	if ((vol_id = lubi_get_vol_id(lubi_priv, arg_volname, &upd_marker)) < 0) {
-		printf("%s:%d: Could not find volume \"%s\"\n",
+		fprintf(stderr, "%s:%d: Could not find volume \"%s\"\n",
 		       __func__, __LINE__, arg_volname);
 		exit(-1);
 	}
 	if (!(buf = malloc(data.peb_sz * 32)))
 		handle_error("malloc");
 	if ((len = lubi_read_svol(lubi_priv, buf, vol_id, 32 - 1)) < 0) {
-		printf("%s:%d: lubi_read_svol failed\n", __func__, __LINE__);
+		fprintf(stderr, "%s:%d: lubi_read_svol failed\n", __func__, __LINE__);
 		exit(-1);
 	}
 
-	printf("Dumping volume \"%s\" (%d bytes) ..\n", arg_volname, len);
+	fprintf(stderr, "Dumping volume \"%s\" (%d bytes) ..\n", arg_volname, len);
 	if (o_fd) {
 		while (len) {
 			ssize_t w = write(o_fd, buf, len);
