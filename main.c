@@ -4,6 +4,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0+
  */
+#define _DEFAULT_SOURCE
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -61,13 +62,13 @@ int main(int argc, char *argv[])
 {
 	struct data data;
 	void *lubi_priv;
-	int i_fd, o_fd = 0, len;
+	int i_fd, o_fd, len;
 	struct stat stat;
 
 	unsigned char *buf;
 	int vol_id, upd_marker;
 
-	const char *arg_ipath = NULL, *arg_opath = NULL, *arg_volname = NULL;
+	const char *arg_ipath = NULL, *arg_opath = "-", *arg_volname = NULL;
 	int arg_peb_sz = 0, arg_peb_min = 0, arg_peb_nb = 0;
 	char *prg = basename(argv[0]);
 
@@ -131,9 +132,13 @@ int main(int argc, char *argv[])
 	if (data.addr == MAP_FAILED)
 		handle_error("mmap");
 
-	if (arg_opath &&
-	    (o_fd = open(arg_opath, O_WRONLY | O_TRUNC | O_CREAT, 0644)) == -1)
-		handle_error(arg_opath);
+	if (!strcmp(arg_opath, "-")) {
+		o_fd = fileno(stdout);
+	} else {
+		o_fd = open(arg_opath, O_WRONLY | O_TRUNC | O_CREAT, 0644);
+		if (o_fd == -1)
+			handle_error(arg_opath);
+	}
 
 	if (!(lubi_priv = malloc(lubi_mem_sz())))
 		handle_error("malloc");
@@ -170,7 +175,7 @@ int main(int argc, char *argv[])
 	}
 
 	fprintf(stderr, "Dumping volume \"%s\" (%d bytes) ..\n", arg_volname, len);
-	if (o_fd) {
+	if (!isatty(o_fd)) {
 		while (len) {
 			ssize_t w = write(o_fd, buf, len);
 			if (w < 0)
