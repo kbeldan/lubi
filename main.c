@@ -37,7 +37,7 @@ static int flash_read(void *priv, void *dst, int pnum, int offset, int len)
 {
 	struct data *data = (struct data *)priv;
         memcpy(dst, data->addr + data->peb_sz * pnum + offset, len);
-        return FLASH_STATUS_GOOD;
+        return len;
 }
 
 static void usage(char *prg)

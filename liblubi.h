@@ -7,11 +7,6 @@
 #ifndef __LIBLUBI_H__
 #define __LIBLUBI_H__
 
-enum {
-	FLASH_STATUS_BAD,
-	FLASH_STATUS_GOOD
-};
-
 typedef int (*flash_read_fn_t)(void *priv, void *dst, int pnum, int offset, int len);
 
 int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum);
