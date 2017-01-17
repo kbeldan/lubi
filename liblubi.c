@@ -163,7 +163,7 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 	struct lubi_priv *lubi = priv;
 	struct leb2peb *leb2pebs = lubi->scratch_leb2pebs;
 	int usable_leb_sz;
-	int ret_len = 0, lebs_ok = 0, used_ebs = 0;
+	int ret_len = 0, lebs_ok = 0, used_ebs = -1;
 	int is_lvl, dcrc_ok;
 
 	DBG_FUNC_ENTRY();
@@ -235,8 +235,7 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 			l2p->peb = i;
 			if (!l2p->dcrc_ok) {
 				l2p->dcrc_ok = 1;
-				if (!lebs_ok++)
-					used_ebs = be32toh(vhdr->used_ebs);
+				lebs_ok++;
 			} else {
 				prev_len = is_lvl ?
 					   len : be32toh(prev_vhdr->data_size);
@@ -245,8 +244,11 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 				ret_len -= prev_len;
 			}
 			ret_len += len;
+			// Pick used_ebs from the last PEB with data crc ok
+			used_ebs = be32toh(vhdr->used_ebs);
 		}
 	}
+
 
 	DBG(SGR_BRST "%s: Volume \"%s\"\n\tEBs used / ok: %d / %d\n\tread %d bytes\n",
 	    __func__, is_lvl ? NULL : lubi->vtbl_recs[vol_id].name, used_ebs,
