@@ -19,7 +19,8 @@
 struct peb_rec {
 	struct ubi_ec_hdr ehdr;
 	struct ubi_vid_hdr vhdr;
-	int vhdr_crc_ok;
+	uint8_t vhdr_crc_ok;
+	uint8_t unused[3];
 };
 
 struct leb2peb {
@@ -42,10 +43,10 @@ struct lubi_priv {
 	uint32_t leb_sz;
 	uint32_t vhdr_offs;
 	uint32_t data_offs;
+	int vtbl_slots;
 
 	uint8_t vtbls_buf[2 * CFG_LUBI_PEB_SZ_MAX];
 	struct ubi_vtbl_record *vtbl_recs;
-	int vtbl_slots;
 
 	struct peb_rec pebs[CFG_LUBI_PEB_NB_MAX];
 	char scan_mem_end[0];
@@ -82,84 +83,61 @@ static int flash_read(struct lubi_priv *lubi, void *dst, int pnum, int offset,
 }
 
 /**
- *
+ * Gets the dynamics offsets from the valid EC headers
+ * 	from the 1st one if vhdr_offs == 0
+ * 	else from the 1st one which vid_hdr_offset == vhdr_offs
  */
-static int lubi_scan(struct lubi_priv *lubi)
+static int lubi_scan_ecs(struct lubi_priv *lubi, uint32_t vhdr_offs)
 {
-	// These will be opt. out if DBG is not enabled
-	int peb_stats[PEB_HAS_CNT] = { 0, };
-	uint64_t min_ec = __UINT64_MAX__, mean_ec = 0, max_ec = 0;
-	int dynparams_set = 0;
-
 	DBG_FUNC_ENTRY();
-
-	memset(lubi->scan_mem_start, 0,
-	       __builtin_offsetof(struct lubi_priv, scan_mem_end) -
-	       __builtin_offsetof(struct lubi_priv , scan_mem_start));
 
 	for (int i = lubi->peb_min; i < lubi->peb_min + lubi->peb_nb; i++) {
 		struct peb_rec *peb = &lubi->pebs[i];
 		struct ubi_ec_hdr *ehdr = &peb->ehdr;
-		struct ubi_vid_hdr *vhdr = &peb->vhdr;
-		uint64_t ec;
 
 		flash_read(lubi, ehdr, i, 0, sizeof(struct ubi_ec_hdr));
 
-		if (ehdr->magic != be32toh(UBI_EC_HDR_MAGIC)) {
-			DBG(SGR_LRED "%s: Bad block ? PEB %d @ %08x\n",
-			    __func__, i, i * lubi->peb_sz);
-			continue;
-		}
+		if (ehdr->magic == be32toh(UBI_EC_HDR_MAGIC) &&
+		    crc32(ehdr, UBI_EC_HDR_SIZE_CRC) == be32toh(ehdr->hdr_crc)) {
+			uint32_t voffs = be32toh(ehdr->vid_hdr_offset);
 
-		peb_stats[PEB_HAS_EHDR_MAGIC]++;
-		if (crc32(ehdr, UBI_EC_HDR_SIZE_CRC) != be32toh(ehdr->hdr_crc))
-			continue;
-		peb_stats[PEB_HAS_EHDR_CRC_OK]++;
+			if (vhdr_offs && vhdr_offs != voffs)
+				continue;
 
-		// robustness paranoia mode off:
-		if (!dynparams_set) {
-			lubi->vhdr_offs = be32toh(ehdr->vid_hdr_offset);
+			lubi->vhdr_offs = voffs;
 			lubi->data_offs = be32toh(ehdr->data_offset);
 
-			lubi->leb_sz = lubi->peb_sz - lubi->data_offs;
-			lubi->vtbl_slots = lubi->leb_sz / UBI_VTBL_RECORD_SIZE;
-			if (lubi->vtbl_slots > UBI_MAX_VOLUMES)
-				lubi->vtbl_slots = UBI_MAX_VOLUMES;
+			return 0;
 		}
+	}
+	return -1;
+}
 
-		ec = be64toh(ehdr->ec);
-		mean_ec += ec;
-		if (ec < min_ec)
-			min_ec = ec;
-		if (ec > max_ec)
-			max_ec = ec;
+/**
+ *
+ */
+static int lubi_scan_vids(struct lubi_priv *lubi)
+{
+	DBG_FUNC_ENTRY();
+
+	for (int i = lubi->peb_min; i < lubi->peb_min + lubi->peb_nb; i++) {
+		struct peb_rec *peb = &lubi->pebs[i];
+		struct ubi_vid_hdr *vhdr = &peb->vhdr;
 
 		flash_read(lubi, vhdr, i, lubi->vhdr_offs,
 			   sizeof(struct ubi_vid_hdr));
 
-		if (vhdr->magic != be32toh(UBI_VID_HDR_MAGIC))
+		if (vhdr->magic != be32toh(UBI_VID_HDR_MAGIC) ||
+		    crc32(vhdr, UBI_VID_HDR_SIZE_CRC) != be32toh(vhdr->hdr_crc))
 			continue;
 
-		peb_stats[PEB_HAS_VHDR_MAGIC]++;
-		if (crc32(vhdr, UBI_VID_HDR_SIZE_CRC) != be32toh(vhdr->hdr_crc))
-			continue;
-		peb_stats[PEB_HAS_VHDR_CRC_OK]++;
 		peb->vhdr_crc_ok = 1;
 
-		DBG("%s:%3d: PEB %3d @ %08x: vol_id %8X lnum %5d sqnum %5lld ec %lld\n",
+		DBG("%s:%3d: PEB %3d @ %08x: vol_id %8X lnum %5d sqnum %5lld\n",
 		    __func__, __LINE__, i, i * lubi->peb_sz,
 		    be32toh(vhdr->vol_id), be32toh(vhdr->lnum),
-		    (long long)be64toh(vhdr->sqnum), (long long)ec);
+		    (long long)be64toh(vhdr->sqnum));
 	}
-
-	DBG(SGR_BRST "PEBs counts (Total = %d):\n", lubi->peb_nb);
-	for (int i = 0; i < PEB_HAS_CNT; i++)
-		DBG("\t%s - %3d\n", peb_has_strs[i], peb_stats[i]);
-	DBG(SGR_BRST "Erase counters (min-mean-max):\n\tEC  %lld-%lld-%lld\n",
-	    (long long)min_ec,
-	    (long long)mean_ec / (peb_stats[PEB_HAS_EHDR_CRC_OK] ?: 1),
-	    (long long)max_ec);
-
 	return 0;
 }
 
@@ -223,10 +201,10 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 
 		l2p = &leb2pebs[lnum];
 		buf_dst = (uint8_t *)buf + lnum * usable_leb_sz;
-		// - The layout volume is special-cased because of the way :(
+		// The layout volume is special-cased because of the way :(
 		// Linux-UBI handles its data_{crc,size} when restoring it
 		//
-		// - Linux-UBI uses the LEB size to compute vtbl_slots
+		// Linux-UBI uses the LEB size to compute vtbl_slots
 		//
 		// To improve any diagnostic and ease ret_len computation we
 		// could check that in case of data and unless we are parsing
@@ -346,14 +324,31 @@ int lubi_get_vol_id(const void *priv, const char *name, int *upd_marker)
 /**
  *
  */
-int lubi_attach(void *priv)
+int lubi_attach(void *priv, uint32_t vhdr_offs, uint32_t data_offs)
 {
 	struct lubi_priv *lubi = priv;
 	struct leb2peb *leb2pebs = lubi->scratch_leb2pebs;
 
 	DBG_FUNC_ENTRY();
 
-	if (lubi_scan(lubi))
+	memset(lubi->scan_mem_start, 0,
+	       __builtin_offsetof(struct lubi_priv, scan_mem_end) -
+	       __builtin_offsetof(struct lubi_priv , scan_mem_start));
+
+	if (!vhdr_offs || !data_offs) {
+		// if vhdr_offs == 0, data_offs is not used
+		if (lubi_scan_ecs(lubi, vhdr_offs) < 0)
+			return -1;
+	} else {
+		lubi->vhdr_offs = vhdr_offs;
+		lubi->data_offs = data_offs;
+	}
+	lubi->leb_sz = lubi->peb_sz - lubi->data_offs;
+	lubi->vtbl_slots = lubi->leb_sz / UBI_VTBL_RECORD_SIZE;
+	if (lubi->vtbl_slots > UBI_MAX_VOLUMES)
+		lubi->vtbl_slots = UBI_MAX_VOLUMES;
+
+	if (lubi_scan_vids(lubi))
 		return -1;
 
 	if (lubi_read_svol(lubi, lubi->vtbls_buf, UBI_LAYOUT_VOLUME_ID, 1) < 0)

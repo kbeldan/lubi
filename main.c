@@ -144,7 +144,7 @@ int main(int argc, char *argv[])
 		printf("%s:%d: lubi_init failed\n", __func__, __LINE__);
 		exit(-1);
 	}
-	if (lubi_attach(lubi_priv)) {
+	if (lubi_attach(lubi_priv, 0, 0)) {
 		printf("%s:%d: lubi_attach failed\n", __func__, __LINE__);
 		exit(-1);
 	}
