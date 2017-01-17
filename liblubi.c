@@ -305,12 +305,13 @@ int lubi_get_vol_id(const void *priv, const char *name, int *upd_marker)
 
 	len = htobe16(len);
 	for (int i = 0; i < lubi->vtbl_slots; i++) {
-		/* Should not happen */
+#if 0 // ATM liblubi doesn't accept damaged LVLs so the following can't happen
 		if (crc32(&recs[i], UBI_VTBL_RECORD_SIZE_CRC) !=
 		    be32toh(recs[i].crc)) {
 			DBG(SGR_BRED "%s: Bad VTBL rec\n", __func__);
 			continue;
 		}
+#endif
 		if (len == recs[i].name_len &&
 		    !strcmp((const char *)recs[i].name, name)) {
 			*upd_marker = recs[i].upd_marker;
