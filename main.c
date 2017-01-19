@@ -132,14 +132,6 @@ int main(int argc, char *argv[])
 	if (data.addr == MAP_FAILED)
 		handle_error("mmap");
 
-	if (!strcmp(arg_opath, "-")) {
-		o_fd = fileno(stdout);
-	} else {
-		o_fd = open(arg_opath, O_WRONLY | O_TRUNC | O_CREAT, 0644);
-		if (o_fd == -1)
-			handle_error(arg_opath);
-	}
-
 	if (!(lubi_priv = malloc(lubi_mem_sz())))
 		handle_error("malloc");
 
@@ -172,6 +164,14 @@ int main(int argc, char *argv[])
 	if ((len = lubi_read_svol(lubi_priv, buf, vol_id, 32 - 1)) < 0) {
 		fprintf(stderr, "%s:%d: lubi_read_svol failed\n", __func__, __LINE__);
 		exit(-1);
+	}
+
+	if (!strcmp(arg_opath, "-")) {
+		o_fd = fileno(stdout);
+	} else {
+		o_fd = open(arg_opath, O_WRONLY | O_TRUNC | O_CREAT, 0644);
+		if (o_fd == -1)
+			handle_error(arg_opath);
 	}
 
 	fprintf(stderr, "Dumping volume \"%s\" (%d bytes) ..\n", arg_volname, len);
