@@ -136,9 +136,11 @@ int main(int argc, char *argv[])
 		handle_error("malloc");
 
 	data.peb_sz = arg_peb_sz;
+	if (!arg_peb_nb)
+		arg_peb_nb = stat.st_size / data.peb_sz;
 
 	if (lubi_init(lubi_priv, &data, flash_read, data.peb_sz, arg_peb_min,
-		      arg_peb_nb ?: stat.st_size / data.peb_sz)) {
+		      arg_peb_nb)) {
 		fprintf(stderr, "%s:%d: lubi_init failed\n", __func__, __LINE__);
 		exit(-1);
 	}
@@ -159,9 +161,9 @@ int main(int argc, char *argv[])
 		       __func__, __LINE__, arg_volname);
 		exit(-1);
 	}
-	if (!(buf = malloc(data.peb_sz * 32)))
+	if (!(buf = malloc(data.peb_sz * arg_peb_nb)))
 		handle_error("malloc");
-	if ((len = lubi_read_svol(lubi_priv, buf, vol_id, 32 - 1)) < 0) {
+	if ((len = lubi_read_svol(lubi_priv, buf, vol_id, arg_peb_nb - 1)) < 0) {
 		fprintf(stderr, "%s:%d: lubi_read_svol failed\n", __func__, __LINE__);
 		exit(-1);
 	}
