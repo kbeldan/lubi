@@ -1,6 +1,6 @@
 #!/bin/sh
 
-LUBI_PRG=lubi
+LUBI_PRG=$(dirname $(realpath $0))/lubi
 
 modprobe nandsim parts="32" bbt=1
 modprobe gluebi
