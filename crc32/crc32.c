@@ -29,7 +29,6 @@
 #include <linux/compiler.h>
 #else
 #include <stddef.h>
-#define _DEFAULT_SOURCE
 #include <endian.h>
 #define u64 __u64
 #define u32 __u32
