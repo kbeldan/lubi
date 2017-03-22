@@ -5,7 +5,6 @@ VPATH = $(EXT)
 
 CFLAGS += $(patsubst %,-I%,$(VPATH)) -std=c99
 CFLAGS += -Wextra -Wall -Werror -g -Os
-CFLAGS += -D_DEFAULT_SOURCE -D_BSD_SOURCE
 
 ifdef ENABLE_DEBUG
 CPPFLAGS += -DCFG_LUBI_DBG

@@ -4,7 +4,7 @@
  *
  * SPDX-License-Identifier: GPL-2.0+
  */
-#include <endian.h>
+#include <asm/byteorder.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -96,15 +96,15 @@ static int lubi_scan_ecs(struct lubi_priv *lubi, uint32_t vhdr_offs)
 
 		flash_read(lubi, ehdr, i, 0, sizeof(struct ubi_ec_hdr));
 
-		if (ehdr->magic == be32toh(UBI_EC_HDR_MAGIC) &&
-		    crc32(ehdr, UBI_EC_HDR_SIZE_CRC) == be32toh(ehdr->hdr_crc)) {
-			uint32_t voffs = be32toh(ehdr->vid_hdr_offset);
+		if (ehdr->magic == __be32_to_cpu(UBI_EC_HDR_MAGIC) &&
+		    crc32(ehdr, UBI_EC_HDR_SIZE_CRC) == __be32_to_cpu(ehdr->hdr_crc)) {
+			uint32_t voffs = __be32_to_cpu(ehdr->vid_hdr_offset);
 
 			if (vhdr_offs && vhdr_offs != voffs)
 				continue;
 
 			lubi->vhdr_offs = voffs;
-			lubi->data_offs = be32toh(ehdr->data_offset);
+			lubi->data_offs = __be32_to_cpu(ehdr->data_offset);
 
 			return 0;
 		}
@@ -126,16 +126,16 @@ static int lubi_scan_vids(struct lubi_priv *lubi)
 		flash_read(lubi, vhdr, i, lubi->vhdr_offs,
 			   sizeof(struct ubi_vid_hdr));
 
-		if (vhdr->magic != be32toh(UBI_VID_HDR_MAGIC) ||
-		    crc32(vhdr, UBI_VID_HDR_SIZE_CRC) != be32toh(vhdr->hdr_crc))
+		if (vhdr->magic != __be32_to_cpu(UBI_VID_HDR_MAGIC) ||
+		    crc32(vhdr, UBI_VID_HDR_SIZE_CRC) != __be32_to_cpu(vhdr->hdr_crc))
 			continue;
 
 		peb->vhdr_crc_ok = 1;
 
 		DBG("%s:%3d: PEB %3d @ %08x: vol_id %8X lnum %5d sqnum %5lld\n",
 		    __func__, __LINE__, i, i * lubi->peb_sz,
-		    be32toh(vhdr->vol_id), be32toh(vhdr->lnum),
-		    (long long)be64toh(vhdr->sqnum));
+		    __be32_to_cpu(vhdr->vol_id), __be32_to_cpu(vhdr->lnum),
+		    (long long)__be64_to_cpu(vhdr->sqnum));
 	}
 	return 0;
 }
@@ -148,7 +148,7 @@ static int check_vtbl(const struct lubi_priv *lubi,
 {
 	for (int i = 0; i < lubi->vtbl_slots; i++) {
 		if (crc32(&recs[i], UBI_VTBL_RECORD_SIZE_CRC) !=
-		    be32toh(recs[i].crc))
+		    __be32_to_cpu(recs[i].crc))
 			return -1;
 	}
 	return 0;
@@ -176,7 +176,7 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 			return -1;
 	else
 		usable_leb_sz = lubi->leb_sz -
-				be32toh(lubi->vtbl_recs[vol_id].data_pad);
+				__be32_to_cpu(lubi->vtbl_recs[vol_id].data_pad);
 
 	if (max_lnum > CFG_LUBI_PEB_NB_MAX)
 		max_lnum = CFG_LUBI_PEB_NB_MAX;
@@ -185,16 +185,16 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 
 	for (int i = lubi->peb_min; i < lubi->peb_min + lubi->peb_nb; i++) {
 		struct peb_rec *peb = &lubi->pebs[i];
-		struct ubi_vid_hdr *prev_vhdr, *vhdr = &peb->vhdr;
+		struct ubi_vid_hdr *prev_vhdr = NULL, *vhdr = &peb->vhdr;
 		uint32_t lnum, len, prev_len;
 		struct leb2peb *l2p;
 		void *buf_dst, *rd_dst;
 
 		if (!peb->vhdr_crc_ok ||
-		    vhdr->vol_id != htobe32(vol_id))
+		    vhdr->vol_id != __cpu_to_be32(vol_id))
 			continue;
 
-		lnum = be32toh(vhdr->lnum);
+		lnum = __be32_to_cpu(vhdr->lnum);
 		if (lnum > max_lnum)
 			continue;
 
@@ -209,13 +209,13 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 		// could check that in case of data and unless we are parsing
 		// the latest LEB, data_size is usable_leb_sz
 		len = is_lvl ? lubi->vtbl_slots * UBI_VTBL_RECORD_SIZE :
-			       be32toh(vhdr->data_size);
+			       __be32_to_cpu(vhdr->data_size);
 		if (!l2p->dcrc_ok) {
 			rd_dst = buf_dst;
 		} else {
 			prev_vhdr = &lubi->pebs[l2p->peb].vhdr;
 
-			if (be64toh(vhdr->sqnum) < be64toh(prev_vhdr->sqnum))
+			if (__be64_to_cpu(vhdr->sqnum) < __be64_to_cpu(prev_vhdr->sqnum))
 				continue;
 
 			rd_dst = lubi->scratch_leb;
@@ -228,7 +228,7 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 		if (is_lvl)
 			dcrc_ok = !check_vtbl(lubi, rd_dst);
 		else
-			dcrc_ok = crc32(rd_dst, len) == be32toh(vhdr->data_crc);
+			dcrc_ok = crc32(rd_dst, len) == __be32_to_cpu(vhdr->data_crc);
 
 		if (dcrc_ok) {
 			l2p->peb = i;
@@ -237,14 +237,14 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 				lebs_ok++;
 			} else {
 				prev_len = is_lvl ?
-					   len : be32toh(prev_vhdr->data_size);
+					   len : __be32_to_cpu(prev_vhdr->data_size);
 
 				memmove(buf_dst, rd_dst, len);
 				ret_len -= prev_len;
 			}
 			ret_len += len;
 			// Pick used_ebs from the last PEB with data crc ok
-			used_ebs = be32toh(vhdr->used_ebs);
+			used_ebs = __be32_to_cpu(vhdr->used_ebs);
 		}
 	}
 
@@ -258,7 +258,7 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 
 		if (lebs_ok)
 			expected = usable_leb_sz * (used_ebs - 1) +
-				   be32toh(lubi->pebs[last_peb].vhdr.data_size);
+				   __be32_to_cpu(lubi->pebs[last_peb].vhdr.data_size);
 		else
 			expected = 0;
 		if (expected != ret_len) {
@@ -320,11 +320,11 @@ int lubi_get_vol_id(const void *priv, const char *name, int *upd_marker)
 	if (!len || len > UBI_VOL_NAME_MAX)
 		return -1;
 
-	len = htobe16(len);
+	len = __cpu_to_be16(len);
 	for (int i = 0; i < lubi->vtbl_slots; i++) {
 #if 0 // ATM liblubi doesn't accept damaged LVLs so the following can't happen
 		if (crc32(&recs[i], UBI_VTBL_RECORD_SIZE_CRC) !=
-		    be32toh(recs[i].crc)) {
+		    __be32_to_cpu(recs[i].crc)) {
 			DBG(SGR_BRED "%s: Bad VTBL rec\n", __func__);
 			continue;
 		}

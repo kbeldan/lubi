@@ -29,13 +29,10 @@
 #include <linux/compiler.h>
 #else
 #include <stddef.h>
-#include <endian.h>
 #define u64 __u64
 #define u32 __u32
 #define u16 __u16
 #define u8  __u8
-#define cpu_to_be32 htobe32
-#define cpu_to_le32 htole32
 #endif
 #include <linux/types.h>
 
@@ -50,8 +47,8 @@
 #define CRC_LE_BITS 8
 
 #if CRC_LE_BITS == 8
-#define tole(x) cpu_to_le32(x)
-#define tobe(x) cpu_to_be32(x)
+#define tole(x) __cpu_to_le32(x)
+#define tobe(x) __cpu_to_be32(x)
 #else
 #define tole(x) (x)
 #define tobe(x) (x)
