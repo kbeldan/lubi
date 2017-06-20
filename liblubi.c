@@ -163,10 +163,10 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 		usable_leb_sz = lubi->leb_sz -
 				__be32_to_cpu(lubi->vtbl_recs[vol_id].data_pad);
 
-	if (max_lnum > CFG_LUBI_PEB_NB_MAX)
-		max_lnum = CFG_LUBI_PEB_NB_MAX;
+	if (max_lnum > CFG_LUBI_PEB_NB_MAX - 1)
+		max_lnum = CFG_LUBI_PEB_NB_MAX - 1;
 
-	memset(leb2pebs, 0, max_lnum * sizeof(leb2pebs[0]));
+	memset(leb2pebs, 0, (max_lnum + 1) * sizeof(leb2pebs[0]));
 
 	for (int i = 0; i < lubi->peb_nb; i++) {
 		struct peb_rec *peb = &lubi->pebs[i];
