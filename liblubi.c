@@ -74,11 +74,11 @@ static int lubi_scan_ecs(struct lubi_priv *lubi, uint32_t vhdr_offs)
 {
 	DBG_FUNC_ENTRY();
 
-	for (int i = lubi->peb_min; i < lubi->peb_min + lubi->peb_nb; i++) {
+	for (int i = 0; i < lubi->peb_nb; i++) {
 		struct peb_rec *peb = &lubi->pebs[i];
 		struct ubi_ec_hdr *ehdr = &peb->ehdr;
 
-		flash_read(lubi, ehdr, i, 0, sizeof(struct ubi_ec_hdr));
+		flash_read(lubi, ehdr, lubi->peb_min + i, 0, sizeof(struct ubi_ec_hdr));
 
 		if (ehdr->magic == __be32_to_cpu(UBI_EC_HDR_MAGIC) &&
 		    crc32(ehdr, UBI_EC_HDR_SIZE_CRC) == __be32_to_cpu(ehdr->hdr_crc)) {
@@ -103,11 +103,11 @@ static int lubi_scan_vids(struct lubi_priv *lubi)
 {
 	DBG_FUNC_ENTRY();
 
-	for (int i = lubi->peb_min; i < lubi->peb_min + lubi->peb_nb; i++) {
+	for (int i = 0; i < lubi->peb_nb; i++) {
 		struct peb_rec *peb = &lubi->pebs[i];
 		struct ubi_vid_hdr *vhdr = &peb->vhdr;
 
-		flash_read(lubi, vhdr, i, lubi->vhdr_offs,
+		flash_read(lubi, vhdr, lubi->peb_min + i, lubi->vhdr_offs,
 			   sizeof(struct ubi_vid_hdr));
 
 		if (vhdr->magic != __be32_to_cpu(UBI_VID_HDR_MAGIC) ||
@@ -117,7 +117,8 @@ static int lubi_scan_vids(struct lubi_priv *lubi)
 		peb->vhdr_crc_ok = 1;
 
 		DBG("%s:%3d: PEB %3d @ %08x: vol_id %8X lnum %5d sqnum %5lld\n",
-		    __func__, __LINE__, i, i * lubi->peb_sz,
+		    __func__, __LINE__, lubi->peb_min + i,
+		    (lubi->peb_min + i) * lubi->peb_sz,
 		    __be32_to_cpu(vhdr->vol_id), __be32_to_cpu(vhdr->lnum),
 		    (long long)__be64_to_cpu(vhdr->sqnum));
 	}
@@ -167,7 +168,7 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 
 	memset(leb2pebs, 0, max_lnum * sizeof(leb2pebs[0]));
 
-	for (int i = lubi->peb_min; i < lubi->peb_min + lubi->peb_nb; i++) {
+	for (int i = 0; i < lubi->peb_nb; i++) {
 		struct peb_rec *peb = &lubi->pebs[i];
 		struct ubi_vid_hdr *prev_vhdr = NULL, *vhdr = &peb->vhdr;
 		uint32_t lnum, len, prev_len;
@@ -207,7 +208,8 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 			memset(rd_dst + len - len / 8, 0x5A, len / 8);
 		}
 
-		flash_read(lubi, rd_dst, i, lubi->data_offs, len);
+		flash_read(lubi, rd_dst, lubi->peb_min + i, lubi->data_offs,
+			   len);
 
 		if (is_lvl)
 			dcrc_ok = !check_vtbl(lubi, rd_dst);
@@ -358,7 +360,8 @@ int lubi_attach(void *priv, uint32_t vhdr_offs, uint32_t data_offs)
 
 	for (int i = 0; i < 2; i++)
 		DBG("LVL: LEB[%1d] -> PEB[%3d] - data crc: %s\n",
-		    i, leb2pebs[i].peb, leb2pebs[i].dcrc_ok ? "good" : "bad");
+		    i, lubi->peb_min + leb2pebs[i].peb,
+		    leb2pebs[i].dcrc_ok ? "good" : "bad");
 
 	if (leb2pebs[0].dcrc_ok)
 		lubi->vtbl_recs = (void *)&lubi->vtbls_buf[0];
