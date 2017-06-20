@@ -13,6 +13,9 @@
 #ifndef CFG_LUBI_PEB_SZ_MAX
 #define CFG_LUBI_PEB_SZ_MAX	(128 << 10)
 #endif
+#ifndef CFG_LUBI_USE_LVL
+#define CFG_LUBI_USE_LVL	1
+#endif
 
 #ifdef CFG_LUBI_DBG
 #include <stdio.h>

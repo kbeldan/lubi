@@ -44,8 +44,10 @@ struct lubi_priv {
 	uint32_t data_offs;
 	int vtbl_slots;
 
+#if CFG_LUBI_USE_LVL
 	uint8_t vtbls_buf[2 * CFG_LUBI_PEB_SZ_MAX];
 	struct ubi_vtbl_record *vtbl_recs;
+#endif
 
 	struct peb_rec pebs[CFG_LUBI_PEB_NB_MAX];
 	char scan_mem_end[0];
@@ -142,7 +144,8 @@ static int check_vtbl(const struct lubi_priv *lubi,
 /**
  *
  */
-int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
+int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum,
+		   __attribute__((unused)) int pad)
 {
 	struct lubi_priv *lubi = priv;
 	struct leb2peb *leb2pebs = lubi->scratch_leb2pebs;
@@ -154,6 +157,7 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 
 	is_lvl = vol_id == UBI_LAYOUT_VOLUME_ID;
 
+#if CFG_LUBI_USE_LVL
 	if (is_lvl)
 		usable_leb_sz = lubi->leb_sz;
 	else if (!lubi->vtbl_recs ||
@@ -162,6 +166,9 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 	else
 		usable_leb_sz = lubi->leb_sz -
 				__be32_to_cpu(lubi->vtbl_recs[vol_id].data_pad);
+#else
+	usable_leb_sz = lubi->leb_sz - pad;
+#endif
 
 	if (max_lnum > CFG_LUBI_PEB_NB_MAX - 1)
 		max_lnum = CFG_LUBI_PEB_NB_MAX - 1;
@@ -264,6 +271,7 @@ int lubi_read_svol(void *priv, void *buf, int vol_id, unsigned int max_lnum)
 	return ret_len;
 }
 
+#if CFG_LUBI_USE_LVL
 /**
  *
  */
@@ -324,6 +332,7 @@ int lubi_get_vol_id(const void *priv, const char *name, int *upd_marker)
 
 	return -1;
 }
+#endif
 
 /**
  *
@@ -331,7 +340,9 @@ int lubi_get_vol_id(const void *priv, const char *name, int *upd_marker)
 int lubi_attach(void *priv, uint32_t vhdr_offs, uint32_t data_offs)
 {
 	struct lubi_priv *lubi = priv;
+#if CFG_LUBI_USE_LVL
 	struct leb2peb *leb2pebs = lubi->scratch_leb2pebs;
+#endif
 
 	DBG_FUNC_ENTRY();
 
@@ -355,7 +366,8 @@ int lubi_attach(void *priv, uint32_t vhdr_offs, uint32_t data_offs)
 	if (lubi_scan_vids(lubi))
 		return -1;
 
-	if (lubi_read_svol(lubi, lubi->vtbls_buf, UBI_LAYOUT_VOLUME_ID, 1) < 0)
+#if CFG_LUBI_USE_LVL
+	if (lubi_read_svol(lubi, lubi->vtbls_buf, UBI_LAYOUT_VOLUME_ID, 1, 0) < 0)
 		return -1;
 
 	for (int i = 0; i < 2; i++)
@@ -369,6 +381,7 @@ int lubi_attach(void *priv, uint32_t vhdr_offs, uint32_t data_offs)
 		lubi->vtbl_recs = (void *)&lubi->vtbls_buf[lubi->leb_sz];
 	else
 		return -1;
+#endif
 
 	return 0;
 }
