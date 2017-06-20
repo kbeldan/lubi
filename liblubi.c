@@ -54,22 +54,6 @@ struct lubi_priv {
 	// scratch mem
 	struct leb2peb scratch_leb2pebs[CFG_LUBI_PEB_NB_MAX];
 	uint8_t scratch_leb[CFG_LUBI_PEB_SZ_MAX];
-
-};
-
-enum {
-	PEB_HAS_EHDR_MAGIC,
-	PEB_HAS_EHDR_CRC_OK,
-	PEB_HAS_VHDR_MAGIC,
-	PEB_HAS_VHDR_CRC_OK,
-	PEB_HAS_CNT
-};
-
-static const char __attribute__((unused)) *peb_has_strs[PEB_HAS_CNT] = {
-	[PEB_HAS_EHDR_MAGIC]	= "EC  magic ",
-	[PEB_HAS_EHDR_CRC_OK]	= "EC  crc ok",
-	[PEB_HAS_VHDR_MAGIC]	= "VID magic ",
-	[PEB_HAS_VHDR_CRC_OK]	= "VID crc ok",
 };
 
 /**
