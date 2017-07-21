@@ -1,0 +1,170 @@
+From 0411e1aed5d0ce3994d5c99e2a396f4911514331 Mon Sep 17 00:00:00 2001
+From: Karl Beldan <karl.beldan-ext@sagemcom.com>
+Date: Thu, 15 Jun 2017 16:16:47 +0200
+Subject: [PATCH] spl: Add an example lubi loader
+
+Signed-off-by: Karl Beldan <karl.beldan-ext@sagemcom.com>
+---
+ common/spl/Makefile                 |   3 +
+ common/spl/spl_lubi.c               | 117 ++++++++++++++++++++++++++++++++++++
+ drivers/mtd/nand/nand_spl_loaders.c |   2 +-
+ 3 files changed, 121 insertions(+), 1 deletion(-)
+ create mode 100644 common/spl/spl_lubi.c
+
+diff --git a/common/spl/Makefile b/common/spl/Makefile
+index 47a64dd7d0..c7cec88755 100644
+--- a/common/spl/Makefile
++++ b/common/spl/Makefile
+@@ -15,10 +15,13 @@ obj-$(CONFIG_SPL_NOR_SUPPORT) += spl_nor.o
+ obj-$(CONFIG_SPL_XIP_SUPPORT) += spl_xip.o
+ obj-$(CONFIG_SPL_YMODEM_SUPPORT) += spl_ymodem.o
+ ifndef CONFIG_SPL_UBI
++ifndef CONFIG_SPL_LUBI
+ obj-$(CONFIG_SPL_NAND_SUPPORT) += spl_nand.o
+ obj-$(CONFIG_SPL_ONENAND_SUPPORT) += spl_onenand.o
+ endif
++endif
+ obj-$(CONFIG_SPL_UBI) += spl_ubi.o
++obj-$(CONFIG_SPL_LUBI) += spl_lubi.o
+ obj-$(CONFIG_SPL_NET_SUPPORT) += spl_net.o
+ obj-$(CONFIG_SPL_MMC_SUPPORT) += spl_mmc.o
+ obj-$(CONFIG_SPL_ATF_SUPPORT) += spl_atf.o
+diff --git a/common/spl/spl_lubi.c b/common/spl/spl_lubi.c
+new file mode 100644
+index 0000000000..2222739b64
+--- /dev/null
++++ b/common/spl/spl_lubi.c
+@@ -0,0 +1,117 @@
++/*
++ * Copyright (C) 2017 Sagemcom
++ * Author: karl.beldan@gmail.com
++ *
++ * SPDX-License-Identifier: GPL 2.0+
++ */
++#include <common.h>
++#include <memalign.h>
++#include <nand.h>
++#include <spl.h>
++
++#include <lzma/LzmaTypes.h>
++#include <lzma/LzmaDec.h>
++#include <lzma/LzmaTools.h>
++
++#include "liblubi.h"
++
++static const struct {
++	const char *name;
++	void *load_addr;
++	size_t size;
++} volumes[] = {
++	CONFIG_SPL_LUBI_VOLUMES
++};
++
++static int flash_read(void *priv, void *dst, int pnum, int offset, int len)
++{
++	return nand_spl_read_block(pnum, offset, len, dst);
++}
++
++int spl_lubi_load_image(struct spl_image_info *spl_image,
++		       struct spl_boot_device *bootdev)
++{
++#ifdef CONFIG_SPL_LUBI_DYNALLOCS
++	void *lubi_priv = malloc_cache_aligned(lubi_mem_sz());
++#else
++	void *lubi_priv = (void *)CONFIG_SPL_LUBI_PRIV_ADDR;
++#endif
++	struct image_header *hdr = NULL;
++	int i;
++
++	if (bootdev->boot_device != BOOT_DEVICE_NAND)
++		return 1;
++
++	nand_init();
++
++	if (lubi_init(lubi_priv, NULL, flash_read,
++		      CONFIG_SPL_LUBI_PEB_SZ, CONFIG_SPL_LUBI_PEB_MIN,
++		      CONFIG_SPL_LUBI_PEB_NB)) {
++		puts("lubi: init failed\n");
++		goto out;
++	}
++
++	if (lubi_attach(lubi_priv, 0, 0)) {
++		puts("lubi: attach failed\n");
++		goto out;
++	}
++
++	lubi_list_vols(lubi_priv);
++
++	for (i = 0; i < ARRAY_SIZE(volumes); i++) {
++		int vol_id, upd_marker, len;
++		void *_hdr = volumes[i].load_addr;
++#ifdef CONFIG_SPL_LUBI_DYNALLOCS
++		if (_hdr == (void *)-1)
++			_hdr = malloc_cache_aligned(volumes[i].size);
++#endif
++		if ((vol_id = lubi_get_vol_id(lubi_priv, volumes[i].name,
++					      &upd_marker)) < 0) {
++			puts("lubi: volume not found\n");
++			continue;
++		}
++		len = lubi_read_svol(lubi_priv, _hdr, vol_id, -1, 0);
++		if (len > 0) {
++#ifdef CONFIG_SPL_LIBCOMMON_SUPPORT
++			if (!image_check_hcrc(_hdr) ||
++			    !image_check_dcrc(_hdr)) {
++				puts("lubi: bad Image CRC");
++				continue;
++			}
++#endif
++			hdr = _hdr;
++			break;
++		}
++		puts("lubi: read failed\n");
++	}
++
++	if (hdr) {
++		if (CONFIG_IS_ENABLED(LZMA_SUPPORT) &&
++		    image_get_comp(hdr) == IH_COMP_LZMA) {
++			// XXX
++			SizeT lzma_len = 10 * image_get_data_size(hdr);
++			int ret;
++
++			debug("Found LZMA image\n");
++			ret = lzmaBuffToBuffDecompress(
++					(void *)image_get_load(hdr), &lzma_len,
++					(void *)image_get_data(hdr),
++					image_get_data_size(hdr));
++			if (ret) {
++				puts("Failed to uncompress image\n");
++				hdr = NULL;
++			}
++		} else if (image_get_comp(hdr) == IH_COMP_NONE) {
++			debug("Found Uncompressed image\n");
++			memmove((void *)image_get_load(hdr),
++				(void *)image_get_data(hdr),
++				image_get_data_size(hdr));
++		}
++		spl_parse_image_header(spl_image, hdr);
++	}
++out:
++	nand_deselect();
++
++	return hdr == NULL;
++}
++SPL_LOAD_IMAGE_METHOD("NAND", 0, BOOT_DEVICE_NAND, spl_lubi_load_image);
+diff --git a/drivers/mtd/nand/nand_spl_loaders.c b/drivers/mtd/nand/nand_spl_loaders.c
+index 177c12b581..5e8850f415 100644
+--- a/drivers/mtd/nand/nand_spl_loaders.c
++++ b/drivers/mtd/nand/nand_spl_loaders.c
+@@ -41,7 +41,7 @@ int nand_spl_load_image(uint32_t offs, unsigned int size, void *dst)
+ 	return 0;
+ }
+ 
+-#ifdef CONFIG_SPL_UBI
++#if defined(CONFIG_SPL_UBI) || defined (CONFIG_SPL_LUBI)
+ /*
+  * Temporary storage for non NAND page aligned and non NAND page sized
+  * reads. Note: This does not support runtime detected FLASH yet, but
+-- 
+2.13.0
+
