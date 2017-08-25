@@ -32,10 +32,12 @@
 #endif
 
 #ifdef CFG_LUBI_INT_CRC32
-#include "crc32defs.h"
-static inline int crc32_init(void) { return 0; }
-extern uint32_t crc32_le(uint32_t crc, unsigned char const *p, size_t len);
-#define crc32(buf, len)		crc32_le(~0, (unsigned char const *)(buf), len)
+#define CRCPOLY_LE 0xEDB88320
+extern int crc32_le_init(uint32_t poly);
+extern uint32_t crc32_le(uint32_t crc, const uint8_t *p, size_t len, uint32_t poly);
+
+#define crc32_init()		crc32_le_init(CRCPOLY_LE)
+#define crc32(buf, len)		crc32_le(~0, (const uint8_t *)(buf), len, CRCPOLY_LE)
 #endif
 
 #endif /* !__LUBI_H__ */

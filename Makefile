@@ -1,8 +1,5 @@
 -include config.mk
 
-EXT = crc32
-VPATH = $(EXT)
-
 CFLAGS += $(patsubst %,-I%,$(VPATH)) -std=c99
 CFLAGS += -Wextra -Wall -Werror -g -Os
 
