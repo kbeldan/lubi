@@ -29,11 +29,11 @@ CFG_LUBI_INT_CRC32   - Use the internal crc32 func
 An example program is provided:
 ```
 $ ./lubi --help
-Usage: lubi     --ifile in\_file
-                [--ofile out\_file]
+Usage: lubi     --ifile in_file
+                [--ofile out_file]
                 [--peb_min peb_min]
-                [--peb\_nb peb_nb]
-                --peb\_sz peb_sz
+                [--peb_nb peb_nb]
+                --peb_sz peb_sz
                 [--vol volume_name]
 
 $ nanddump --bb=dumpbad /dev/mtd1 -f mtd1.dat
