@@ -32,12 +32,9 @@
 #endif
 
 #ifdef CFG_LUBI_INT_CRC32
-#define CRCPOLY_LE 0xEDB88320
-extern int crc32_le_init(uint32_t poly);
-extern uint32_t crc32_le(uint32_t crc, const uint8_t *p, size_t len, uint32_t poly);
-
-#define crc32_init()		crc32_le_init(CRCPOLY_LE)
+#define CRCPOLY_LE		0xEDB88320
 #define crc32(buf, len)		crc32_le(UBI_CRC32_INIT, (const uint8_t *)(buf), len, CRCPOLY_LE)
+extern uint32_t crc32_le(uint32_t crc, const uint8_t *p, size_t len, uint32_t poly);
 #endif
 
 #endif /* !__LUBI_H__ */

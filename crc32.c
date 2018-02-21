@@ -8,8 +8,9 @@
 
 #ifdef CFG_LUBI_INT_CRC32_TBL
 static uint32_t crc32_le_tbl[256];
+static int crc32_le_tbl_filled = 0;
 
-uint32_t crc32_le_init(uint32_t poly)
+static uint32_t crc32_le_init(uint32_t poly)
 {
 	for (int i = 0; i < 256; i++) {
 		uint32_t crc = i;
@@ -18,18 +19,19 @@ uint32_t crc32_le_init(uint32_t poly)
 		crc32_le_tbl[i] = crc;
 	}
 
-	return 0;
-}
-#else
-uint32_t crc32_le_init(__attribute__((unused)) uint32_t poly)
-{
+	crc32_le_tbl_filled = 1;
+
 	return 0;
 }
 #endif
 
-uint32_t crc32_le(uint32_t crc, const uint8_t *p, size_t len,
-		  __attribute__((unused)) uint32_t poly)
+uint32_t crc32_le(uint32_t crc, const uint8_t *p, size_t len, uint32_t poly)
 {
+#ifdef CFG_LUBI_INT_CRC32_TBL
+	if (__builtin_expect(!crc32_le_tbl_filled, 0))
+		crc32_le_init(poly);
+#endif
+
 	for (unsigned int i = 0; i < len; i++) {
 #ifdef CFG_LUBI_INT_CRC32_TBL
 		crc = crc32_le_tbl[(crc & 0xff) ^ *p++] ^ (crc >> 8);

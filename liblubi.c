@@ -406,10 +406,5 @@ int lubi_init(void *priv, void *ext_priv, flash_read_fn_t flash_read,
 		return -1;
 	}
 
-	if (crc32_init()) {
-		DBG("crc32_init failed\n");
-		return -1;
-	}
-
 	return 0;
 }
