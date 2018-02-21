@@ -27,7 +27,7 @@
 #include "config.h"
 
 #define handle_error(str) \
-	do { err(-1, "%d: %s", __LINE__, str); return -1; } while (0)
+	do { err(-1, "%d: %s", __LINE__, str); } while (0)
 
 struct data {
 	char *addr;
