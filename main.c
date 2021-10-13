@@ -163,7 +163,7 @@ int main(int argc, char *argv[])
 	}
 	if (!(buf = malloc(data.peb_sz * arg_peb_nb)))
 		handle_error("malloc");
-	if ((len = lubi_read_svol(lubi_priv, buf, vol_id, arg_peb_nb - 1)) < 0) {
+	if ((len = lubi_read_svol(lubi_priv, buf, vol_id, arg_peb_nb - 1, 0)) < 0) {
 		fprintf(stderr, "%s:%d: lubi_read_svol failed\n", __func__, __LINE__);
 		exit(-1);
 	}
