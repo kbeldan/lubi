@@ -1,5 +1,6 @@
 /*
  * crc_le(crc, buf, len, poly) -> crc:32,bitrev(poly),crc,true,true,0
+ * c.f Rocksoft Param. Model      WIDTH,POLY,INIT,REFIN,REFOUT,XOROUT
  *
  * SPDX-License-Identifier: GPL-2.0+
  */
